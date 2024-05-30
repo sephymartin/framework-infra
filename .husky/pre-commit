@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+npx lint-staged --verbose --debug
+
+#CURRENT_DIR=$(
+#    cd $(dirname $0)
+#    pwd
+#)
+#
+#REPORT_DIR=$(
+#    cd $(dirname $0)
+#    cd ..
+#    pwd
+#)
+#
+#STAGED_JAVA_FILES=$(git diff --staged --name-only --diff-filter=ACMR | grep -E "\.(java)$")
+#echo "STAGED_JAVA_FILES: $STAGED_JAVA_FILES"
+#if [ -n "$STAGED_JAVA_FILES" ] ; then
+#  # 构建完整路径
+#  SPOTLESS_FILES=$(git diff --staged --name-only --diff-filter=ACMR | grep -E "\.(java)$" | while read line; do echo ${REPORT_DIR}/${line}; done | paste -sd "," -)
+#  echo "SPOTLESS_FILES: $SPOTLESS_FILES"
+#  $REPORT_DIR/mvnw spotless:apply -DspotlessFiles="$SPOTLESS_FILES"
+#  if [ $? -ne 0 ]; then
+#    echo "spotless:apply 执行失败"
+#    exit 1
+#  fi
+#  git diff --staged --name-only --diff-filter=ACMR | grep -E "\.(java)$" | while IFS= read -r line ; do git add $line; done
+#fi
+#
+#exit 0
