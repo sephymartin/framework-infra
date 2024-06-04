@@ -176,3 +176,5 @@ logs/
 target/
 
 allure-results/
+
+.sdkmanrc

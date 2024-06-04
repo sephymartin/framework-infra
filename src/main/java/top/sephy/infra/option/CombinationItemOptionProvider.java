@@ -61,16 +61,16 @@ public class CombinationItemOptionProvider<K, V> implements ItemOptionProvider<K
     }
 
     @Override
-    public List<ItemOption<K, V>> getOptions(@NonNull String type, Set<K> filterValues) {
+    public List<ItemOption<K, V>> getOptions(@NonNull String type, Set<K> filterKeys) {
         ItemOptionProvider<K, V> provider = typeProviderMappingCache.get(type);
 
         List<ItemOption<K, V>> options = Collections.emptyList();
         if (provider != null) {
-            options = provider.getOptions(type, filterValues);
+            options = provider.getOptions(type, filterKeys);
         } else {
             for (ItemOptionProvider<K, V> itemOptionProvider : notFixedTypeProviders) {
                 if (itemOptionProvider.getTypes().contains(type)) {
-                    options = itemOptionProvider.getOptions(type, filterValues);
+                    options = itemOptionProvider.getOptions(type, filterKeys);
                     typeProviderMappingCache.put(type, itemOptionProvider);
                     break;
                 }

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 public class ItemOption<K, V> {
 
     @Schema(name = "对应 option 的 value")
-    private K value;
+    private K key;
     @Schema(name = "对应 option 的 label")
     private V label;
     @Schema(name = "是否失效")

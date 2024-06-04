@@ -14,12 +14,12 @@ import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import top.sephy.infra.jackson.annotation.JsonItemOptionObject;
 import top.sephy.infra.jackson.annotation.JsonMappingLabel;
 import top.sephy.infra.jackson.ser.JsonMappingLabelSerializer;
 import top.sephy.infra.option.ItemOptionProvider;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * 实现 {@link JsonMappingLabel} 注解, 在序列化时自动添加字典标签
@@ -51,12 +51,14 @@ public class CustomPOJOSerializerModifier extends BeanSerializerModifier {
                 JsonMappingLabel annotation = beanProperty.getAnnotation(JsonMappingLabel.class);
                 if (annotation != null) {
                     DictFiledMeta meta = new DictFiledMeta();
-                    String labelName = annotation.valueFieldName();
+                    String labelName = annotation.labelFieldName();
                     if (!StringUtils.hasText(labelName)) {
                         labelName = beanProperty.getName() + "Label";
                     }
                     meta.setLabelName(labelName);
                     meta.setDictType(annotation.type());
+                    meta.setDefaultLabel(annotation.defaultLabel());
+                    meta.setCompareWithKeyString(annotation.compareWithKeyString());
                     map.put(beanProperty.getName(), meta);
                 }
             }
@@ -70,8 +72,8 @@ public class CustomPOJOSerializerModifier extends BeanSerializerModifier {
                     if (log.isDebugEnabled()) {
                         log.debug("对 {} 的 {} 属性添加字典标签", beanClass, beanProperty.getName());
                     }
-                    beanProperty.assignSerializer(
-                        new JsonMappingLabelSerializer(itemOptionProvider, meta.getDictType(), meta.getLabelName()));
+                    beanProperty.assignSerializer(new JsonMappingLabelSerializer(itemOptionProvider, meta.getDictType(),
+                        meta.getLabelName(), meta.getDefaultLabel(), meta.isCompareWithKeyString()));
                     // JavaType type = beanProperty.getType();
                     // AnnotatedMember member = new VirtualAnnotatedMember(beanDesc.getClassInfo(),beanClass,
                     // labelName, type);
@@ -90,5 +92,7 @@ public class CustomPOJOSerializerModifier extends BeanSerializerModifier {
     private static class DictFiledMeta {
         private String dictType;
         private String labelName;
+        private boolean compareWithKeyString;
+        private String defaultLabel;
     }
 }

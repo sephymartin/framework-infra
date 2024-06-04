@@ -26,5 +26,19 @@ public @interface JsonMappingLabel {
      * 
      * @return
      */
-    String valueFieldName() default "";
+    String labelFieldName() default "";
+
+    /**
+     * 默认的值
+     * 
+     * @return
+     */
+    String defaultLabel() default "";
+
+    /**
+     * 将key转换为字符串再比较
+     *
+     * @return
+     */
+    boolean compareWithKeyString() default true;
 }
