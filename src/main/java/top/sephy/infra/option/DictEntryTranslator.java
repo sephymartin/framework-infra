@@ -10,16 +10,16 @@ import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
-import top.sephy.infra.option.annotation.TranslateItemOption;
 import lombok.Data;
+import top.sephy.infra.option.annotation.TranslateDict;
 
-public class ItemOptionTranslator {
+public class DictEntryTranslator {
 
-    private ItemOptionProvider<Object, Object> optionProvider;
+    private DictEntryProvider<Object, Object> optionProvider;
 
     private ConcurrentHashMap<Class<?>, List<TranslationMeta>> cache = new ConcurrentHashMap<>();
 
-    public ItemOptionTranslator(ItemOptionProvider<Object, Object> optionProvider) {
+    public DictEntryTranslator(DictEntryProvider<Object, Object> optionProvider) {
         this.optionProvider = optionProvider;
     }
 
@@ -38,11 +38,12 @@ public class ItemOptionTranslator {
                 if (StringUtils.hasText(valueFieldName) && StringUtils.hasText(keyFieldName)) {
                     Object keyPropertyValue = beanWrapper.getPropertyValue(keyFieldName);
                     if (keyPropertyValue != null) {
-                        Object value = optionProvider.getV(type, keyPropertyValue);
+                        Object value = optionProvider.option(type, keyPropertyValue, meta.isCompareWithString(),
+                            meta.isCaseSensitive());
                         if (value != null) {
                             beanWrapper.setPropertyValue(valueFieldName, value);
                         } else {
-                            beanWrapper.setPropertyValue(valueFieldName, meta.getDefaultValue());
+                            beanWrapper.setPropertyValue(valueFieldName, meta.getDefaultLabel());
                         }
                     }
                 }
@@ -53,12 +54,12 @@ public class ItemOptionTranslator {
     private synchronized List<TranslationMeta> prepareMeta(Class<?> klass) {
         List<TranslationMeta> list = new ArrayList<>();
         ReflectionUtils.doWithFields(klass, field -> {
-            TranslateItemOption annotation = field.getAnnotation(TranslateItemOption.class);
+            TranslateDict annotation = field.getAnnotation(TranslateDict.class);
             if (annotation != null) {
                 TranslationMeta translationMeta = new TranslationMeta();
                 translationMeta.setType(annotation.type());
                 translationMeta.setKeyFieldName(annotation.keyFieldName());
-                translationMeta.setDefaultValue(annotation.defaultValue());
+                translationMeta.setDefaultLabel(annotation.defaultValue());
                 translationMeta.setValueFieldName(field.getName());
                 list.add(translationMeta);
             }
@@ -80,6 +81,10 @@ public class ItemOptionTranslator {
 
         private String valueFieldName;
 
-        private String defaultValue;
+        private String defaultLabel;
+
+        private boolean compareWithString;
+
+        private boolean caseSensitive;
     }
 }

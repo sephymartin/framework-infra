@@ -7,12 +7,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 配合 {@link JsonItemOptionObject} 使用，标记一个字段为字典字段, 在序列化时会自动添加一个字典标签
+ * 配合 {@link JsonDictObject} 使用，标记一个字段为字典字段, 在序列化时会自动添加一个字典标签
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
-public @interface JsonMappingLabel {
+public @interface JsonDict {
 
     /**
      * 字典类型
@@ -33,12 +33,16 @@ public @interface JsonMappingLabel {
      * 
      * @return
      */
-    String defaultLabel() default "";
+    String defaultLabelValue() default "";
 
     /**
      * 将key转换为字符串再比较
      *
      * @return
      */
-    boolean compareWithKeyString() default true;
+    boolean compareWithString() default true;
+
+    boolean caseSensitive() default false;
+
+    Class<?> labelClass() default String.class;
 }

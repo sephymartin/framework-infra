@@ -13,8 +13,8 @@ import org.apache.ibatis.mapping.SqlSource;
 import com.baomidou.mybatisplus.core.injector.AbstractMethod;
 import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
-import top.sephy.infra.entity.DeleteLog;
 
+import top.sephy.infra.entity.DeleteLog;
 
 public abstract class AbstractInsertDeleteLog extends AbstractMethod {
 
