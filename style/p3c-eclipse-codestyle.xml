@@ -427,8 +427,9 @@
         
         <setting id="org.eclipse.jdt.core.formatter.comment.format_source_code" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.format_html" value="true"/>
-        
-        <setting id="org.eclipse.jdt.core.formatter.join_lines_in_comments" value="true"/>
+
+        <!-- 多行注释不做合并 -->
+        <setting id="org.eclipse.jdt.core.formatter.join_lines_in_comments" value="false"/>
         <!--和IDEA保持一致，注释换行-->
         <setting id="org.eclipse.jdt.core.formatter.comment.indent_parameter_description" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.insert_new_line_for_parameter" value="do not insert"/>
