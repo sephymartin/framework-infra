@@ -67,6 +67,10 @@ public class DictEntryTranslator {
     }
 
     private synchronized List<TranslationMeta> prepareMeta(Class<?> klass) {
+        List<TranslationMeta> metaList = cache.get(klass);
+        if (metaList != null) {
+            return metaList;
+        }
         List<TranslationMeta> list = new ArrayList<>();
         ReflectionUtils.doWithFields(klass, field -> {
             TranslateDict annotation = field.getAnnotation(TranslateDict.class);
