@@ -17,11 +17,17 @@ package top.sephy.infra.mybatis.plus.intercepter;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import lombok.Setter;
+import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.statement.select.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -39,22 +45,12 @@ import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.sf.jsqlparser.expression.JsonAggregateOnNullType;
-import net.sf.jsqlparser.expression.JsonFunction;
-import net.sf.jsqlparser.expression.JsonFunctionType;
-import net.sf.jsqlparser.expression.JsonKeyValuePair;
-import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectItem;
 import top.sephy.infra.exception.SystemException;
 import top.sephy.infra.mybatis.interceptor.CurrentUserExtractor;
 
@@ -65,8 +61,15 @@ import top.sephy.infra.mybatis.interceptor.CurrentUserExtractor;
 @Slf4j
 public class DeleteLogInterceptor implements InnerInterceptor {
 
+    @Setter
     private int defaultBatchUpdateLimit = 1000;
+
+    @Setter
     private boolean batchUpdateLimitationOpened = false;
+
+    @Setter
+    private Boolean batchUpdateCheckCountOpened;
+
     private final Map<String, Integer> batchUpdateLimitMap = new ConcurrentHashMap<>();// 表名->批量更新上限
 
     private String tableName;
@@ -86,6 +89,8 @@ public class DeleteLogInterceptor implements InnerInterceptor {
     private Map<String, Integer> ignoreTables = new ConcurrentHashMap<>();
 
     private Map<String, PlainSelect> selectCache = new ConcurrentHashMap<>();
+
+    private Map<String, PlainSelect> selectCountCache = new ConcurrentHashMap<>();
 
     private Map<String, Insert> insertCache = new ConcurrentHashMap<>();
 
@@ -111,12 +116,17 @@ public class DeleteLogInterceptor implements InnerInterceptor {
         ignoreTables.put(tableName.toLowerCase(), 1);
     }
 
+    public void setBatchUpdateLimitMap(Map<String, Integer> batchUpdateLimitMap) {
+        this.batchUpdateLimitMap.putAll(batchUpdateLimitMap);
+    }
+
     @Override
     public void beforePrepare(StatementHandler sh, Connection connection, Integer transactionTimeout) {
         PluginUtils.MPStatementHandler mpSh = PluginUtils.mpStatementHandler(sh);
         MappedStatement ms = mpSh.mappedStatement();
         final BoundSql boundSql = mpSh.boundSql();
         SqlCommandType sct = ms.getSqlCommandType();
+        batchUpdateCheckCountByTransactionIsolation(connection);
         if (sct == SqlCommandType.DELETE) {
             PluginUtils.MPBoundSql mpBs = mpSh.mPBoundSql();
             long startTs = System.currentTimeMillis();
@@ -140,13 +150,25 @@ public class DeleteLogInterceptor implements InnerInterceptor {
         }
     }
 
+    private void batchUpdateCheckCountByTransactionIsolation(Connection connection) {
+        try {
+            if(Objects.isNull(batchUpdateCheckCountOpened)) {
+                int isolationLevel = connection.getTransactionIsolation();
+                this.batchUpdateCheckCountOpened = Connection.TRANSACTION_REPEATABLE_READ == isolationLevel;
+            }
+        } catch (Exception e) {
+            log.error("get transaction isolation error: {}", e.getMessage(), e);
+            throw new SystemException(e);
+        }
+    }
+
     public void processDelete(Delete deleteStmt, MappedStatement mappedStatement, BoundSql boundSql,
         Connection connection) {
         Table table = deleteStmt.getTable();
         TableInfo tableInfo = TableInfoHelper.getTableInfo(table.getName());
         if (tableInfo != null) {
             PlainSelect select = getPlainSelect(deleteStmt, tableInfo);
-            copyOriginalData(select, mappedStatement, boundSql, connection);
+            copyOriginalData(select, deleteStmt, mappedStatement, boundSql, connection);
         }
     }
 
@@ -171,6 +193,35 @@ public class DeleteLogInterceptor implements InnerInterceptor {
 
     static String surroundedBySingleQuotes(String str) {
         return "'" + str + "'";
+    }
+
+    private PlainSelect getPlainSelectCount(Delete deleteStmt) {
+        PlainSelect select = selectCountCache.computeIfAbsent(deleteStmt.toString(), s -> {
+            Table deleteTable = deleteStmt.getTable();
+            PlainSelect plainSelect = new PlainSelect();
+            plainSelect.setFromItem(deleteTable);
+
+            List<SelectItem<?>> selectItems = new ArrayList<>();
+
+            Function countFunction = new Function();
+            countFunction.setName("COUNT");
+
+            List<Expression> expressions = new ArrayList<>();
+            expressions.add(new AllColumns()); // 表示 * 的表达式
+            countFunction.setParameters(new ExpressionList(expressions));
+
+            selectItems.add(new SelectItem<>(countFunction));
+
+            plainSelect.setSelectItems(selectItems);
+            plainSelect.setWhere(deleteStmt.getWhere());
+            plainSelect.setJoins(deleteStmt.getJoins());
+
+            return plainSelect;
+        });
+
+        log.debug("select count sql: {}", select);
+
+        return select;
     }
 
     private PlainSelect getPlainSelect(Delete deleteStmt, TableInfo tableInfo) {
@@ -224,16 +275,21 @@ public class DeleteLogInterceptor implements InnerInterceptor {
         return select;
     }
 
-    private int copyOriginalData(PlainSelect selectStmt, MappedStatement mappedStatement, BoundSql boundSql,
-        Connection connection) {
+    private int copyOriginalData(PlainSelect selectStmt, Delete deleteStmt, MappedStatement mappedStatement, BoundSql boundSql,
+                                 Connection connection) {
 
+        if(Boolean.TRUE.equals(batchUpdateCheckCountOpened)) {
+            checkCount(selectStmt, deleteStmt, mappedStatement, boundSql, connection);
+        }
         String insertSelectSql = generateInsertSelectSql(selectStmt).toString();
         try (PreparedStatement statement = connection.prepareStatement(insertSelectSql)) {
             DefaultParameterHandler parameterHandler =
                 new DefaultParameterHandler(mappedStatement, boundSql.getParameterObject(), boundSql);
             parameterHandler.setParameters(statement);
             int i = statement.executeUpdate();
-            checkTableBatchLimitExceeded(selectStmt, i);
+            if(Boolean.FALSE.equals(batchUpdateCheckCountOpened)) {
+                checkTableBatchLimitExceeded(selectStmt, i);
+            }
             return i;
         } catch (Exception e) {
             if (e instanceof DataChangeRecorderInnerInterceptor.DataUpdateLimitationException) {
@@ -244,12 +300,27 @@ public class DeleteLogInterceptor implements InnerInterceptor {
         }
     }
 
-    private void checkTableBatchLimitExceeded(PlainSelect plainSelect, int count) {
+    private void checkCount(PlainSelect selectStmt, Delete deleteStmt, MappedStatement mappedStatement, BoundSql boundSql, Connection connection) {
+        PlainSelect selectCount = getPlainSelectCount(deleteStmt);
+        try (PreparedStatement statement = connection.prepareStatement(selectCount.toString())) {
+            DefaultParameterHandler parameterHandler =
+                    new DefaultParameterHandler(mappedStatement, boundSql.getParameterObject(), boundSql);
+            parameterHandler.setParameters(statement);
+            ResultSet resultSet = statement.executeQuery();
+            if(resultSet.next()) {
+                int count = resultSet.getInt(1);
+                checkTableBatchLimitExceeded(selectStmt, count);
+            }
+        } catch (SQLException e) {
+            log.error("query count error: {}", e.getMessage(), e);
+            throw new SystemException(e);
+        }
+    }
 
+    private void checkTableBatchLimitExceeded(PlainSelect plainSelect, int count) {
         if (!batchUpdateLimitationOpened) {
             return;
         }
-
         final FromItem fromItem = plainSelect.getFromItem();
         if (fromItem instanceof Table) {
             Table fromTable = (Table)fromItem;
@@ -261,8 +332,7 @@ public class DeleteLogInterceptor implements InnerInterceptor {
                         tableName, limit, count);
                 throw new DataChangeRecorderInnerInterceptor.DataUpdateLimitationException(msg);
             }
-        }
-        if (count > defaultBatchUpdateLimit) {
+        } else if (count > defaultBatchUpdateLimit) {
             String msg = String.format("batch update limit exceed for configured tableName=%s, limit=%d, " + "count=%d",
                 tableName, defaultBatchUpdateLimit, count);
             throw new DataChangeRecorderInnerInterceptor.DataUpdateLimitationException(msg);
