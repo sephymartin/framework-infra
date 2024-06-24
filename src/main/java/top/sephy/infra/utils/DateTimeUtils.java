@@ -37,7 +37,7 @@ public abstract class DateTimeUtils {
 
     public static final int YEAR_MULTI_POW = 10000;
 
-    public static final String TIME_ZONE_BEIJING = "GMT+8";
+    public static final String TIME_ZONE_BEIJING = "Asia/Shanghai";
 
     public static final String PATTERN_DATE = "yyyy-MM-dd";
 
