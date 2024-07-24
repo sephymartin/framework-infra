@@ -16,7 +16,8 @@
 package top.sephy.infra.utils;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Calendar;
+import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,9 +31,9 @@ class DateTimeUtilsTest {
 
     @Test
     public void timezone() {
-        LocalDateTime localDateTime = LocalDateTime.of(1987, 5, 1, 0, 0, 0);
-        System.out.println(JacksonUtils.toJson(new LocalDateTimeWithZone(localDateTime, localDateTime,
-            localDateTime.toLocalDate(), localDateTime.toLocalDate())));
+        Date date = new Date(1989 - 1900, Calendar.JULY, 4);
+        LocalDate localDate = LocalDate.of(1987, 5, 1);
+        System.out.println(JacksonUtils.toJson(new LocalDateTimeWithZone(date, date, localDate, localDate)));
     }
 
     @Data
@@ -40,11 +41,11 @@ class DateTimeUtilsTest {
     @AllArgsConstructor
     public static class LocalDateTimeWithZone {
 
-        @JsonFormat(pattern = DateTimeUtils.PATTERN_DATE_TIME, timezone = "GMT+8")
-        private LocalDateTime ldt1;
+        @JsonFormat(pattern = DateTimeUtils.PATTERN_DATE, timezone = "GMT+8")
+        private Date date1;
 
-        @JsonFormat(pattern = DateTimeUtils.PATTERN_DATE_TIME, timezone = "Asia/Shanghai")
-        private LocalDateTime ldt2;
+        @JsonFormat(pattern = DateTimeUtils.PATTERN_DATE, timezone = "Asia/Shanghai")
+        private Date date2;
 
         @JsonFormat(pattern = DateTimeUtils.PATTERN_DATE, timezone = "GMT+8")
         private LocalDate ld1;
