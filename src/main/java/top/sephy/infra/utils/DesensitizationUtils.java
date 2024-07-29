@@ -15,7 +15,7 @@
  */
 package top.sephy.infra.utils;
 
-public class DesensitizationUtils {
+public abstract class DesensitizationUtils {
 
     public static String chineseName(String name) {
         if (name == null) {

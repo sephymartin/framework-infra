@@ -22,7 +22,7 @@ import java.util.Random;
  * @author sephy
  * @date 2022-02-05 23:02
  */
-public class IPUtils {
+public abstract class IPUtils {
 
     private IPUtils() {}
 

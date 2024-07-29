@@ -118,6 +118,7 @@ public class DeleteLogInterceptor implements InnerInterceptor {
         final BoundSql boundSql = mpSh.boundSql();
         SqlCommandType sct = ms.getSqlCommandType();
         if (sct == SqlCommandType.DELETE) {
+            // 如果是使用 MBP 的邏輯刪除
             PluginUtils.MPBoundSql mpBs = mpSh.mPBoundSql();
             long startTs = System.currentTimeMillis();
             try {

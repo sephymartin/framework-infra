@@ -208,6 +208,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.shardingsphere</groupId>
             <artifactId>shardingsphere-encrypt-api</artifactId>
             <version>${shardingsphere.version}</version>

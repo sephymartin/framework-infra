@@ -13,18 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package top.sephy.infra.utils;
+package top.sephy.infra.lock.annotation;
 
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
+public enum LockMode {
 
-public abstract class XSSUtils {
+    LOCK,
 
-    public static String stripXSS(String value) {
-        if (value == null) {
-            return null;
-        }
-        // value = ESAPI.encoder().canonicalize(value).replaceAll("\0", "");
-        return Jsoup.clean(value, Whitelist.none());
-    }
+    LOCK_INTERRUPTIBLY,
+
+    TRYLOCK
 }

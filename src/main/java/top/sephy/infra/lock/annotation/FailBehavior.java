@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package top.sephy.infra.utils;
+package top.sephy.infra.lock.annotation;
 
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Whitelist;
+public enum FailBehavior {
 
-public abstract class XSSUtils {
+    /**
+     * 抛出异常
+     */
+    FAIL_FAST,
 
-    public static String stripXSS(String value) {
-        if (value == null) {
-            return null;
-        }
-        // value = ESAPI.encoder().canonicalize(value).replaceAll("\0", "");
-        return Jsoup.clean(value, Whitelist.none());
-    }
+    /**
+     * 忽略
+     */
+    IGNORE
 }
