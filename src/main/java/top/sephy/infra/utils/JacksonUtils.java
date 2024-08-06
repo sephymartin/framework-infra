@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.hashids.Hashids;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.util.ClassUtils;
 
@@ -42,9 +43,11 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.extern.slf4j.Slf4j;
 import top.sephy.infra.jackson.deser.CustomLocalDateDeserializer;
 import top.sephy.infra.jackson.deser.CustomLocalDateTimeDeserializer;
+import top.sephy.infra.jackson.deser.HashIdDeserializer;
 import top.sephy.infra.jackson.ser.CustomBigDecimalSerializer;
 import top.sephy.infra.jackson.ser.CustomLocalDateSerializer;
 import top.sephy.infra.jackson.ser.CustomLocalDateTimeSerializer;
+import top.sephy.infra.jackson.ser.HashIdSerializer;
 
 @Slf4j
 public abstract class JacksonUtils {
@@ -69,21 +72,20 @@ public abstract class JacksonUtils {
     private static TypeReference<HashMap<String, String>> STRING_MAP = new TypeReference<HashMap<String, String>>() {};
 
     public static ObjectMapper newDefaultObjectMapper() {
+
         Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder()
             .serializerByType(LocalDateTime.class, CustomLocalDateTimeSerializer.INSTANCE)
             .deserializerByType(LocalDateTime.class, CustomLocalDateTimeDeserializer.INSTANCE)
             .serializerByType(BigDecimal.class, CustomBigDecimalSerializer.INSTANCE)
             .serializerByType(LocalDate.class, CustomLocalDateSerializer.INSTANCE)
-            .deserializerByType(LocalDate.class, CustomLocalDateDeserializer.INSTANCE);
+            .deserializerByType(LocalDate.class, CustomLocalDateDeserializer.INSTANCE)
+            .serializerByType(Long.class, new HashIdSerializer(new Hashids()))
+            .deserializerByType(Long.class, new HashIdDeserializer(new Hashids()));
         if (playwrightModulePresent) {
             builder.modules(new PlaywrightModule());
         }
+
         ObjectMapper objectMapper = builder.build();
-        SimpleModule simpleModule = new SimpleModule("custom", Version.unknownVersion())
-            .addDeserializer(LocalDateTime.class, CustomLocalDateTimeDeserializer.INSTANCE)
-            .addSerializer(LocalDateTime.class, CustomLocalDateTimeSerializer.INSTANCE)
-            .addSerializer(BigDecimal.class, CustomBigDecimalSerializer.INSTANCE);
-        objectMapper.registerModule(simpleModule);
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         disableFeatures(objectMapper);
         enableFeatures(objectMapper);
